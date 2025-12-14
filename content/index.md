@@ -1,8 +1,13 @@
 ---
-title: Example Title
+title: Heloooo
 draft: false
 tags:
-  - example-tag
+  - Home
 ---
- 
-The rest of your content lives here. You can use **Markdown** here :)
+
+# Hello their ... !
+
+Please find my stupid blogs , messy work & un-finished nonsense on the left sidebar !!!
+...
+Will update this as much as possible , its my space for ideas and stuff i want to keep working towards too 
+
