@@ -1,0 +1,16 @@
+
+- [link](https://www.databricks.com/blog/how-lakebase-architecture-delivers-5x-faster-postgres-writes)
+# MY FINDINGS:
+
+The blog mainly talks about how they were able to bring upto 5 times performance boost over traditional postgres , mainly citing the idea of seperating the compute from the storage ( this is standard the they made innovations on top of this obviously :> ...) , the results were improve Postgres write throughput by 5x, while reducing read tail latencies by 2x and WAL traffic by 94%
+
+Coming to the issue with traditional postgres , they pointed out the WAL and checkpointing mechanism as a bottleneck , over her in the traditional version , we use sequential feed the WAL updates for all the operations we apply and checkpoint the DB when required to the disk , on crash we use the combination to solve our replay problem , but this has a problem that what if the crash triggers right about the time we checkpoint , and now on trying replay we have a corrupted disk copy which on replaying with the WAL is a mess we can't use , inorder to solve this we use Full page write where the latest update after a checkpoint we store a huge 8KB  page into our WAL itself and on the above provlem we use this pristine copy to help us out  , the Databricks guys (authors respectively) solves this particularly .
+
+So , solution starts out by using the fact that we can scale compute endlessly , so we do use a single local directory but a paxos-based quorum of safekeepers (WAL is streamed to this distributed system of storage units , paxos is our consesus protocol , quorum is quorum :|) , as their is no local-disk tear issue we have circumvented this , but have introduced a another issue of read performance drop , has we are not storing full copies of pages in log , when we need to perform a read we need to reconstruct a large amount of small replay items to do this . So , earlier by setting a good checkpointing frequency time we could workout this but now we have  unbounded as we just don't know how this could take .
+
+Right now , when postgres requests a page we have a pageserver (Databricks component) which reconstructs it by finding the most recent materialized image of the page and replaying any WAL deltas we have on hand . The full page images doubles as checkpoints we can use , this keeps the chain reasonably bounded and reads fast . With full page writes disabled we lose the checkpoints entirely , bringing us back to issue of unbounded nature . They solved by pushing this mechanism to the storage layer where they generate images based on acumulated deltas changes rather than checkpointing like the traditional approach .
+
+This leads to less compute to storage layer traffic as we send deltas not entire chunk of pages to disk (storage layer which scalable ... with enough money , i am broke ig with a single laptop) , this reduced traffic by 94 percent (i am shocked) , Scalable storage allows for better durability and distribution of the compute issue making easier for layer to bear work this out ...
+
+Refer the blog for regional , tables (data intensive) , hammerDB benchmark numbers .. quite promising in the p50 & p99 metrics . Also refer to **neon architecture blog** for deeper in sight
+, **cache prewarming for zero-downtime** ....
